@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Horror FPS - rev 0.20</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-family: Arial;
+            text-shadow: 2px 2px 2px black;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <div>Health: <span id="health">100</span></div>
+        <div>Ammo: <span id="ammo">0</span></div>
+        <div>Weapon: <span id="weapon">None</span></div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
+    <script>
+        let scene, camera, renderer, controls;
+        let enemies = [], weapons = [], bullets = [], houses = [], skyscrapers = [];
+        const WORLD_SIZE = 400;
+        const SPAWN_DISTANCE = 150;
+        let canShoot = true;
+        const keys = {};
+        let lastSpawnTime = 0;
+        const SPAWN_INTERVAL = 5000;
+        const MAX_ENEMIES = 20;
+        const SPAWN_RADIUS = { min: 50, max: 100 };
+
+        const player = {
+            health: 100,
+            weapon: null,
+            ammo: 0,
+            position: new THREE.Vector3()
+        };
+
+        class Weapon {
+            constructor(type, color, maxAmmo, fireRate, bulletsPerShot) {
+                this.type = type;
+                this.color = color;
+                this.maxAmmo = maxAmmo;
+                this.fireRate = fireRate;
+                this.bulletsPerShot = bulletsPerShot;
+            }
+        }
+
+        const weaponsConfig = {
+            pistol: new Weapon('pistol', 0xff0000, 30, 500, 1),
+            rifle: new Weapon('rifle', 0x00ff00, 50, 100, 3),
+            shotgun: new Weapon('shotgun', 0x0000ff, 10, 1500, 8)
+        };
+
+        document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+        document.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x555555);
+            scene.fog = new THREE.Fog(0x555555, 30, 150);
+            
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            const light = new THREE.DirectionalLight(0xffffff, 0.4);
+            light.position.set(0, 100, 50);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x505050));
+
+            createGround();
+            generateRoadNetwork();
+            spawnSkyscrapers(); 
+            spawnInitialWeapons();
+            
+            controls = new THREE.PointerLockControls(camera, document.body);
+            scene.add(controls.getObject());
+            resetPlayerPosition();
+
+            document.addEventListener('click', () => controls.lock());
+            document.addEventListener('mousedown', handleShoot);
+        }
+
+        function createGround() {
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(WORLD_SIZE, WORLD_SIZE),
+                new THREE.MeshPhongMaterial({ color: 0x222222 })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            scene.add(ground);
+        }
+
+        function generateRoadNetwork() {
+            const roadMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            
+            for(let i = -WORLD_SIZE/2; i <= WORLD_SIZE/2; i += 100) {
+                createRoad(i, 0, 15, WORLD_SIZE, roadMaterial);
+                createRoad(0, i, WORLD_SIZE, 15, roadMaterial);
+            }
+        }
+
+        function createRoad(x, z, width, length, material) {
+            const road = new THREE.Mesh(
+                new THREE.PlaneGeometry(width, length),
+                material
+            );
+            road.rotation.x = -Math.PI / 2;
+            road.position.set(x, 0.1, z);
+            scene.add(road);
+        }
+
+        function spawnSkyscrapers() {
+            for(let i = 0; i < 500; i++) {
+                const pos = findValidSpawnPosition(40);
+                if(pos) createSkyscraper(pos.x+Math.random()*100, pos.z+Math.random()*100);
+            }
+        }
+
+        function createSkyscraper(x, z) {
+            const skyscraper = new THREE.Group();
+            
+            const height = Math.random() * 30 + 20;
+            const width = Math.random() * 10 + 5;
+            const depth = Math.random() * 10 + 5;
+
+            const walls = new THREE.Mesh(
+                new THREE.BoxGeometry(width, height, depth),
+                new THREE.MeshPhongMaterial({ color: 0x8b8b8b })
+            );
+            walls.position.y = height / 2;
+            skyscraper.add(walls);
+
+            skyscraper.position.set(x, 0, z);
+            scene.add(skyscraper);
+            skyscrapers.push({ position: new THREE.Vector3(x, 0, z) });
+        }
+
+        function spawnInitialWeapons() {
+            for(let i = 0; i < 20; i++) {
+                const pos = findValidSpawnPosition(20);
+                if(pos) createWeapon(pos.x, pos.z);
+            }
+        }
+
+        function findValidSpawnPosition(minDistance) {
+            const maxAttempts = 100;
+            let attempts = 0;
+            
+            while(attempts++ < maxAttempts) {
+                const pos = {
+                    x: (Math.random() - 0.5) * WORLD_SIZE,
+                    z: (Math.random() - 0.5) * WORLD_SIZE
+                };
+                
+                if(positionIsValid(pos, minDistance)) return pos;
+            }
+            return null;
+        }
+
+        function positionIsValid(pos, minDistance) {
+            const allObjects = [
+                ...houses.map(h => h.position),
+                ...skyscrapers.map(s => s.position),
+                ...weapons.map(w => w.position),
+                ...enemies.map(e => e.mesh.position)
+            ];
+
+            return allObjects.every(objPos => {
+                return Math.hypot(pos.x - objPos.x, pos.z - objPos.z) > minDistance;
+            });
+        }
+
+        function createWeapon(x, z) {
+            const weaponTypes = Object.keys(weaponsConfig);
+            const type = weaponTypes[Math.floor(Math.random() * weaponTypes.length)];
+            const config = weaponsConfig[type];
+            
+            const weapon = new THREE.Mesh(
+                new THREE.SphereGeometry(0.8),
+                new THREE.MeshPhongMaterial({ color: config.color })
+            );
+            weapon.position.set(x, 1, z);
+            weapon.userData = { config };
+            scene.add(weapon);
+            weapons.push(weapon);
+        }
+
+        function handleMovement() {
+            if(!controls.isLocked) return;
+
+            const speed = 0.2;
+            const direction = new THREE.Vector3();
+            const cameraDirection = new THREE.Vector3();
+            
+            camera.getWorldDirection(cameraDirection);
+            cameraDirection.y = 0;
+            cameraDirection.normalize();
+
+            const rightVector = new THREE.Vector3()
+                .crossVectors(cameraDirection, new THREE.Vector3(0, 1, 0))
+                .normalize();
+
+            if (keys['w']) direction.add(cameraDirection);
+            if (keys['s']) direction.sub(cameraDirection);
+            if (keys['a']) direction.sub(rightVector);
+            if (keys['d']) direction.add(rightVector);
+
+            if(direction.length() > 0) {
+                direction.normalize().multiplyScalar(speed);
+                controls.getObject().position.add(direction);
+            }
+
+            player.position.copy(controls.getObject().position);
+            checkWeaponPickup();
+        }
+
+        function checkWeaponPickup() {
+            weapons.forEach((weapon, index) => {
+                if(weapon.position.distanceTo(player.position) < 1.5) {
+                    player.weapon = weapon.userData.config;
+                    player.ammo = player.weapon.maxAmmo; // Берем максимальный боезапас
+                    scene.remove(weapon);
+                    weapons.splice(index, 1);
+                    updateUI();
+                }
+            });
+        }
+
+        function handleShoot() {
+            if(!player.weapon || !canShoot || player.ammo <= 0) {
+                if(player.ammo <= 0) {
+                    player.weapon = null;
+                    updateUI();
+                }
+                return;
+            }
+            canShoot = false;
+            
+            const config = player.weapon;
+            player.ammo -= config.bulletsPerShot;
+            updateUI();
+
+            for(let i = 0; i < config.bulletsPerShot; i++) {
+                const bullet = createBullet();
+                scene.add(bullet);
+                bullets.push(bullet);
+            }
+
+            setTimeout(() => {
+                canShoot = true;
+            }, config.fireRate);
+        }
+
+        function createBullet() {
+            const bullet = new THREE.Mesh(
+                new THREE.SphereGeometry(0.2),
+                new THREE.MeshBasicMaterial({ color: player.weapon.color })
+            );
+            
+            bullet.position.copy(player.position);
+            const direction = new THREE.Vector3(0, 0, -1)
+                .applyQuaternion(controls.getObject().quaternion)
+                .normalize();
+            
+            if(player.weapon.type === 'shotgun') {
+                direction.x += (Math.random() - 0.5) * 0.2;
+                direction.y += (Math.random() - 0.5) * 0.2;
+                direction.z += (Math.random() - 0.5) * 0.2;
+                direction.normalize();
+            }
+
+            bullet.velocity = direction.multiplyScalar(0.5);
+            return bullet;
+        }
+
+        function updateEnemies() {
+            const now = Date.now();
+            if(now - lastSpawnTime > SPAWN_INTERVAL) {
+                spawnEnemyAroundPlayer();
+                lastSpawnTime = now;
+            }
+
+            enemies.forEach((enemy, index) => {
+                if(!enemy.active) return;
+                
+                const direction = new THREE.Vector3()
+                    .subVectors(player.position, enemy.mesh.position)
+                    .normalize();
+
+                if(enemy.type === 2) {
+                    const lookDirection = new THREE.Vector3(0, 0, -1)
+                        .applyQuaternion(controls.getObject().quaternion)
+                        .normalize();
+                    
+                    const toEnemy = new THREE.Vector3()
+                        .subVectors(enemy.mesh.position, player.position)
+                        .normalize();
+                    
+                    const angle = lookDirection.dot(toEnemy);
+                    
+                    if(angle > 0.95) {
+                        direction.multiplyScalar(0.1);
+                        enemy.mesh.material.color.setHex(0xff0000);
+                    } else {
+                        enemy.mesh.material.color.setHex(0xff2222);
+                    }
+                }
+
+                enemy.mesh.position.add(direction.multiplyScalar(enemy.speed));
+
+                if(enemy.mesh.position.distanceTo(player.position) < 2) {
+                    player.health -= 10;
+                    updateUI();
+                    if(player.health <= 0) gameOver();
+                }
+            });
+        }
+
+        function updateBullets() {
+            bullets.forEach((bullet, index) => {
+                bullet.position.add(bullet.velocity);
+                
+                enemies.forEach((enemy, enemyIndex) => {
+                    if(bullet.position.distanceTo(enemy.mesh.position) < 1.5) {
+                        enemy.health -= 20;
+                        if(enemy.health <= 0) {
+                            scene.remove(enemy.mesh);
+                            enemies.splice(enemyIndex, 1);
+                        }
+                        scene.remove(bullet);
+                        bullets.splice(index, 1);
+                    }
+                });
+            });
+        }
+
+        function updateUI() {
+            document.getElementById('health').textContent = player.health;
+            document.getElementById('ammo').textContent = player.ammo;
+            document.getElementById('weapon').textContent = player.weapon?.type || 'None';
+        }
+
+        function spawnEnemyAroundPlayer() {
+            if(enemies.length >= MAX_ENEMIES) return;
+            
+            const angle = Math.random() * Math.PI * 2;
+            const distance = SPAWN_RADIUS.min + Math.random() * (SPAWN_RADIUS.max - SPAWN_RADIUS.min);
+            
+            const pos = {
+                x: player.position.x + Math.cos(angle) * distance,
+                z: player.position.z + Math.sin(angle) * distance
+            };
+
+            if(positionIsValid(pos, 15)) {
+                createEnemy(pos.x, pos.z);
+            }
+        }
+
+        function createEnemy(x, z) {
+            const type = Math.random() > 0.5 ? 1 : 2;
+            const geometry = type === 1 ? 
+                new THREE.SphereGeometry(1.5) : 
+                new THREE.ConeGeometry(1, 3, 8);
+            
+            const material = type === 1 ?
+                new THREE.MeshBasicMaterial({ 
+                    transparent: true,
+                    opacity: 0.05, 
+                    color: 0x555555
+                }) :
+                new THREE.MeshPhongMaterial({ 
+                    color: 0xff2222,
+                    shininess: 100 
+                });
+            
+            const enemy = new THREE.Mesh(geometry, material);
+            enemy.position.set(x, type === 1 ? 1.5 : 1, z);
+            
+            enemies.push({
+                mesh: enemy,
+                type: type,
+                speed: type === 1 ? 0.03 : 0.15,
+                health: 100,
+                active: true
+            });
+            scene.add(enemy);
+        }
+
+        function gameOver() {
+            alert('Game Over!');
+            resetPlayerPosition();
+            player.health = 100;
+            player.weapon = null;
+            player.ammo = 0;
+            updateUI();
+        }
+
+        function resetPlayerPosition() {
+            controls.getObject().position.set(0, 1, 0);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            handleMovement();
+            updateEnemies();
+            updateBullets();
+            renderer.render(scene, camera);
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+</html>
