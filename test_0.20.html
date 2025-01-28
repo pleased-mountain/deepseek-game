@@ -31,7 +31,7 @@
         let canShoot = true;
         const keys = {};
         let lastSpawnTime = 0;
-        const SPAWN_INTERVAL = 5000;
+        const SPAWN_INTERVAL = 500;
         const MAX_ENEMIES = 20;
         const SPAWN_RADIUS = { min: 50, max: 100 };
 
@@ -54,8 +54,8 @@
 
         const weaponsConfig = {
             pistol: new Weapon('pistol', 0xff0000, 30, 500, 1),
-            rifle: new Weapon('rifle', 0x00ff00, 50, 100, 3),
-            shotgun: new Weapon('shotgun', 0x0000ff, 10, 1500, 8)
+            rifle: new Weapon('rifle', 0x00ff00, 40, 100, 3),
+            shotgun: new Weapon('shotgun', 0x0000ff, 36, 1500, 6)
         };
 
         document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
@@ -63,8 +63,8 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x555555);
-            scene.fog = new THREE.Fog(0x555555, 30, 150);
+            scene.background = new THREE.Color(0x559990);
+            scene.fog = new THREE.Fog(0x559990, 5, 100);
             
             camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -74,7 +74,7 @@
             const light = new THREE.DirectionalLight(0xffffff, 0.4);
             light.position.set(0, 100, 50);
             scene.add(light);
-            scene.add(new THREE.AmbientLight(0x505050));
+            scene.add(new THREE.AmbientLight(0x558890));
 
             createGround();
             generateRoadNetwork();
@@ -184,10 +184,10 @@
             const config = weaponsConfig[type];
             
             const weapon = new THREE.Mesh(
-                new THREE.SphereGeometry(0.8),
+                new THREE.BoxGeometry(0.2),
                 new THREE.MeshPhongMaterial({ color: config.color })
             );
-            weapon.position.set(x, 1, z);
+            weapon.position.set(x, 0, z);
             weapon.userData = { config };
             scene.add(weapon);
             weapons.push(weapon);
@@ -261,7 +261,7 @@
 
         function createBullet() {
             const bullet = new THREE.Mesh(
-                new THREE.SphereGeometry(0.2),
+                new THREE.SphereGeometry(0.1),
                 new THREE.MeshBasicMaterial({ color: player.weapon.color })
             );
             
@@ -308,9 +308,9 @@
                     
                     if(angle > 0.95) {
                         direction.multiplyScalar(0.1);
-                        enemy.mesh.material.color.setHex(0xff0000);
+                        enemy.mesh.material.color.setHex(0x559990);
                     } else {
-                        enemy.mesh.material.color.setHex(0xff2222);
+                        enemy.mesh.material.color.setHex(0x559990);
                     }
                 }
 
@@ -344,7 +344,7 @@
 
         function updateUI() {
             document.getElementById('health').textContent = player.health;
-            document.getElementById('ammo').textContent = player.ammo;
+            document.getElementById('ammo').textContent = player.ammo > 0 ? player.ammo : 0;
             document.getElementById('weapon').textContent = player.weapon?.type || 'None';
         }
 
@@ -373,11 +373,13 @@
             const material = type === 1 ?
                 new THREE.MeshBasicMaterial({ 
                     transparent: true,
-                    opacity: 0.05, 
+                    opacity: 0.02, 
                     color: 0x555555
                 }) :
                 new THREE.MeshPhongMaterial({ 
-                    color: 0xff2222,
+                    transparent: true,
+                    color: 0x559990,
+                    opacity: 0.5, 
                     shininess: 100 
                 });
             
