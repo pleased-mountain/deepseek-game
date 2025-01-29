@@ -1,4 +1,4 @@
-# deepseek-game
+# deepseek-3d-game
 DeepSeekR1 3D game ( first deepseek 3D game )
 rev20
 ![image](https://github.com/user-attachments/assets/6520c40d-dba7-4b0b-b6fa-daad4b175c42)
