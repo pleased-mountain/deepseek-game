@@ -2,7 +2,7 @@
 DeepSeekR1 3D game 
 DeepSeek create game
 rev25 (in dev)
-![image](https://github.com/user-attachments/assets/d5278351-397c-47ef-8b1b-966cef2fc8f9)
+![image](https://github.com/user-attachments/assets/505e0520-6c6e-4766-add3-2a192b36865a)
 
 rev20
 ![image](https://github.com/user-attachments/assets/6520c40d-dba7-4b0b-b6fa-daad4b175c42)
