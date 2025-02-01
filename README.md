@@ -9,6 +9,7 @@ rev25 - 31.01.2025
 - update colors
 - update enemyies
 - fix bugs
+https://deepseek-game.netlify.app/
 ![image](https://github.com/user-attachments/assets/368c930c-bc7a-44f8-9359-255f293b0fdd)
 ![image](https://github.com/user-attachments/assets/505e0520-6c6e-4766-add3-2a192b36865a)
 
