@@ -10,7 +10,7 @@ rev25 - 31.01.2025
 - update enemyies
 - fix bugs
 
-https://deepseek-game.netlify.app/
+Game: https://deepseek-game.netlify.app/
 City Model: https://sketchfab.com/3d-models/city-3d-model-a7696d8b98e1472a8143791ccee45fff
 ![image](https://github.com/user-attachments/assets/368c930c-bc7a-44f8-9359-255f293b0fdd)
 ![image](https://github.com/user-attachments/assets/505e0520-6c6e-4766-add3-2a192b36865a)
