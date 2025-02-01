@@ -3,13 +3,14 @@ DeepSeekR1 3D game
 DeepSeek create game
 
 rev25 - 31.01.2025 
-https://deepseek-game.netlify.app/
 - add map
 - add physcis
 - add new player controller
 - update colors
 - update enemyies
 - fix bugs
+
+https://deepseek-game.netlify.app/
 
 City Model: https://sketchfab.com/3d-models/city-3d-model-a7696d8b98e1472a8143791ccee45fff
 ![image](https://github.com/user-attachments/assets/368c930c-bc7a-44f8-9359-255f293b0fdd)
