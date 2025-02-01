@@ -16,7 +16,7 @@ https://deepseek-game.netlify.app/
 City Model: sketchfab.com/3d-models/city-3d-model-a7696d8b98e1472a8143791ccee45fff
 
 rev20 - 28.01.2025
-https://deepseek-game.vercel.app/
 
+https://deepseek-game.vercel.app/
 ![image](https://github.com/user-attachments/assets/6520c40d-dba7-4b0b-b6fa-daad4b175c42)
 ![image](https://github.com/user-attachments/assets/b9de8202-3f4d-43e5-98d8-7e5f7b41788d)
